@@ -1,0 +1,5 @@
+import "server-only";import {z} from "zod";import type {SupabaseClient} from "@supabase/supabase-js";import {dbError} from "./api";
+export async function triggerGuardian(client:SupabaseClient,alertId:string,sessionId:string,reasons:string[]){let status:"sent"|"failed"="sent";let mode:"in_app"|"webhook"="in_app";const url=process.env.GUARDIAN_WEBHOOK_URL;
+ if(url){mode="webhook";try{const target=z.string().url().refine(v=>new URL(v).protocol==="https:"&&!new URL(v).username&&!new URL(v).password).parse(url);const headers:Record<string,string>={"Content-Type":"application/json","Idempotency-Key":alertId};if(process.env.GUARDIAN_WEBHOOK_SECRET)headers.Authorization="Bearer "+process.env.GUARDIAN_WEBHOOK_SECRET;const response=await fetch(target,{method:"POST",redirect:"error",headers,signal:AbortSignal.timeout(4000),body:JSON.stringify({demo:true,event:"upi_cooling_off",alertId,sessionId,reasons})});if(!response.ok)status="failed";}catch{status="failed";}}
+ const updated=await client.from("alerts").update({status,delivery_mode:mode,sent_at:status==="sent"?new Date().toISOString():null}).eq("id",alertId);dbError(updated.error);return {id:alertId,status,mode};
+}

@@ -1,0 +1,113 @@
+{
+  "name": "SatyaCall Guardian — safe metadata",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "satyacall-guardian",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "satyacall-hook",
+      "name": "Guardian webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "satyacall-guardian"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body;\nconst allowed = ['riskScore', 'tactics', 'summary', 'time'];\nconst codes = new Set(['DIGITAL_ARREST','SAFE_ACCOUNT','SECRECY_PAYMENT','CREDENTIAL_REQUEST','THREAT','URGENCY','PAYMENT','AUTHORITY','PRIZE_FEE','OTHER_WARNING','ISOLATION','SUSPICIOUS_LINK']);\nif (!input || Object.keys(input).sort().join('|') !== allowed.sort().join('|') || !Number.isInteger(input.riskScore) || input.riskScore < 70 || input.riskScore > 100 || !Array.isArray(input.tactics) || input.tactics.length > 12 || input.tactics.some(x => !codes.has(x)) || typeof input.summary !== 'string' || input.summary.length > 1000 || typeof input.time !== 'string' || !Number.isFinite(Date.parse(input.time))) throw new Error('Invalid Guardian metadata');\nreturn [{json: {riskScore: input.riskScore, tactics: input.tactics, summary: input.summary, time: input.time}}];"
+      },
+      "id": "satyacall-validate",
+      "name": "Validate metadata only",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"accepted\":true}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "satyacall-ack",
+      "name": "Acknowledge metadata",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "SET_FAMILY_CHAT_ID",
+        "text": "={{ JSON.stringify($json) }}",
+        "additionalFields": {}
+      },
+      "id": "satyacall-telegram",
+      "name": "Notify family (configure credentials)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Guardian webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate metadata only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate metadata only": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acknowledge metadata": {
+      "main": [
+        [
+          {
+            "node": "Notify family (configure credentials)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveExecutionProgress": false,
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "tags": []
+}

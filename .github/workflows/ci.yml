@@ -1,0 +1,57 @@
+name: Validate SatyaCall
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    env:
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-sentinel-never-client
+      RELAYER_PRIVATE_KEY: ci-relayer-sentinel-never-client
+      VERDICT_SIGNING_KEY: ci-verdict-sentinel-never-client
+      REGISTRY_PEPPER: ci-registry-sentinel-never-client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --maxWorkers=4
+      - run: npm run build
+      - run: npm run audit:bundle
+      - name: Verify production HTTP protections
+        run: |
+          npm run start -- --hostname 127.0.0.1 --port 3010 > /tmp/satyacall-next.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3010/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          npm run audit:http
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx hardhat test
+
+
+

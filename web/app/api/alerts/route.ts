@@ -1,0 +1,6 @@
+import { emptyQuery } from "../../../lib/api";
+import {requireRole} from "../../../lib/auth";import {allRoles} from "../../../lib/auth-policy";import {ApiError,body,dbError,failure,json} from "../../../lib/api";import {highRiskInput} from "../../../lib/guardian-schema";import {createAdminClient} from "../../../lib/supabase/admin";import {checkRateLimit} from "../../../lib/ratelimit";import {notifyGuardians} from "../../../lib/guardian-notify";
+export const maxDuration=30;
+export async function GET(request?:Request){try{emptyQuery(request);const{id,client}=await requireRole(allRoles);const result=await client.from("alerts").select("id,status,delivery_mode,sent_at,guard_session_id,event_source,payload,created_at").eq("user_id",id).order("created_at",{ascending:false}).limit(50);dbError(result.error);return json({alerts:result.data});}catch(e){return failure(e);}}
+export async function POST(request:Request){try{const actor=await requireRole(allRoles);const data=await body(request,highRiskInput);const admin=createAdminClient();if(!await checkRateLimit(admin,request,"guardian",actor.id))throw new ApiError(429,"RATE_LIMITED");return json(await notifyGuardians(admin,actor.id,data.eventKey,data.riskScore,data.tactics,data.simulate?"simulation":"browser",data.language));}catch(e){return failure(e);}}
+

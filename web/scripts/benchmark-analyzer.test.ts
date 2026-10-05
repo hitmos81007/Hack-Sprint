@@ -1,0 +1,4 @@
+import {it,expect,vi} from "vitest";vi.mock("server-only",()=>({}));
+import samples from "../data/scam-samples.json";import {main,metrics} from "./benchmark";
+it("benchmarks 60 synthetic examples and reports both modes without credentials",async()=>{vi.stubEnv("LLM_PROVIDER","mock");vi.stubEnv("LLM_API_KEY","");try{expect(samples.filter(x=>x.label==="scam")).toHaveLength(40);expect(samples.filter(x=>x.label==="legit")).toHaveLength(20);const result=await main();expect(result.mode).toBe("mock simulation");expect(result.rules.tp+result.rules.tn+result.rules.fp+result.rules.fn).toBe(60);expect(result.modes.hybrid).toBeGreaterThan(0);expect(result.hybrid).toEqual(result.rules);}finally{vi.unstubAllEnvs();}});
+it("computes precision, recall and FPR from actual confusion counts",()=>{expect(metrics([true,true,false,false],[true,false,true,false])).toEqual({accuracy:.5,precision:.5,recall:.5,falsePositiveRate:.5,tp:1,tn:1,fp:1,fn:1});});

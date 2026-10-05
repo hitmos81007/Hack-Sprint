@@ -1,0 +1,1 @@
+import {requirePageRole} from "../../lib/auth";import {allRoles} from "../../lib/auth-policy";import {GuardianAlerts} from "../components/guardian-alerts";export const dynamic="force-dynamic";export default async function Page(){await requirePageRole(allRoles);return <GuardianAlerts/>;}

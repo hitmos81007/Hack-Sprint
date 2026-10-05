@@ -1,0 +1,15 @@
+-- No automatic privileged users or embedded passwords.
+-- 1. Sign up normally and confirm the account email.
+-- 2. Copy its UUID from Supabase Authentication > Users.
+-- 3. As a trusted operator in the SQL editor (postgres), replace the UUID
+--    below and execute the transaction. Confirm exactly one row is returned.
+--    Never expose this operation as public signup metadata or a client call.
+--
+-- begin;
+-- update public.profiles set role = 'root_authority'
+-- where id = 'REPLACE-WITH-CONFIRMED-USER-UUID'::uuid
+-- returning id, role;
+-- commit;
+--
+-- Application role changes require a server-only service-role client AFTER
+-- requireRole checks. Root-authority bootstrap remains a manual SQL operation.
