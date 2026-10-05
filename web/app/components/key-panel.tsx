@@ -10,8 +10,8 @@ export function downloadJson(filename: string, text: string) {
   const link = document.createElement("a"); link.href = url; link.download = filename; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-export const fieldClass = "min-h-12 w-full rounded-lg border border-slate-500 bg-white p-3 text-lg";
-export const buttonClass = "min-h-12 rounded-lg bg-teal-900 px-5 py-3 text-lg font-bold text-white disabled:opacity-50";
+export const fieldClass = "mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-lg text-slate-950 shadow-sm outline-none transition focus:border-teal-700 focus:ring-4 focus:ring-teal-100 disabled:bg-slate-100";
+export const buttonClass = "min-h-12 rounded-xl bg-teal-800 px-5 py-3 text-lg font-bold text-white shadow-[0_7px_16px_rgba(7,89,81,0.20)] transition hover:-translate-y-0.5 hover:bg-teal-900 hover:shadow-[0_10px_20px_rgba(7,89,81,0.24)] disabled:cursor-not-allowed disabled:transform-none disabled:opacity-45";
 export function KeyPanel({ scope, expectedAddress, onWallet }: { scope: string; expectedAddress?: string; onWallet: (wallet: BrowserWallet | null) => void }) {
   const { locale } = useLanguage(); const t = onboardingMessages[locale];
   const vault = useMemo(() => createKeyVault(scope), [scope]);

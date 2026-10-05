@@ -22,23 +22,21 @@ export function CitizenVerify({embedded=false,defaultPayee="",onChallenge,onVerd
   const response=await fetch("/api/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({challengeId:challenge.id,token:token.trim()})});const data=await response.json();
   const parsed=verdictSchema.safeParse(data);if(parsed.success){setVerdict(parsed.data);onVerdict?.(parsed.data);}else throw new Error(data.error?.code);
  }catch(e){setError(e instanceof Error&&e.message?e.message:"SERVICE_UNAVAILABLE");}finally{setBusy(false);}}
- return <Container className="mx-auto max-w-3xl space-y-7 px-5 py-10 text-xl"><Heading className="text-4xl font-bold">{t.heading}</Heading>
- <p className="rounded-lg border-2 border-amber-700 bg-amber-50 p-4 font-bold">{t.warning}</p>
- <form className="space-y-4" onSubmit={e=>{e.preventDefault();void create(new FormData(e.currentTarget));}}>
+ return <Container className={`mx-auto max-w-3xl space-y-7 text-xl ${embedded?"":"page-shell px-5 py-10"}`}><header className={embedded?"":"rounded-[1.75rem] border border-teal-100 bg-white p-7 shadow-[0_18px_42px_rgba(26,64,83,.10)]"}><Heading className="text-4xl font-extrabold tracking-tight text-slate-950">{t.heading}</Heading>{!embedded&&<p className="mt-3 text-slate-700">{t.warning}</p>}</header>
+ <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 font-bold text-amber-950">{t.warning}</p>
+ <form className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" onSubmit={e=>{e.preventDefault();void create(new FormData(e.currentTarget));}}>
  <label className="block">{t.entity}<input name="entity" maxLength={200} required className={fieldClass}/></label>
  <label className="block">{t.category}<select name="category" className={fieldClass}>{categories.map(c=><option key={c} value={c}>{onboardingMessages[locale].categories[c]}</option>)}</select></label>
  <label className="block">{a.purpose}<select name="purpose" className={fieldClass}>{Object.entries(a.purposes).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label className="block">{a.amount}<input name="amount" defaultValue="0.00" inputMode="decimal" required className={fieldClass}/></label><label className="block">{a.payee}<input name="payee" defaultValue={defaultPayee} maxLength={140} className={fieldClass}/></label><p>{a.payeeHint}</p><button className={buttonClass} disabled={busy}>{t.create}</button></form>
- {error&&<p role="alert">{t.reasons[error]??t.error}</p>}{busy&&<p role="status">{t.pending}</p>}
- {challenge&&<section className="space-y-4 rounded-xl border-2 border-teal-900 p-5"><h2 className="text-2xl font-bold">{t.code}</h2>
- <p className="text-center font-mono text-5xl font-extrabold tracking-wider sm:text-6xl">{challenge.code}</p><p className="break-all">{t.challengeId}: <code>{challenge.id}</code></p>
+ {error&&<p className="rounded-xl bg-red-50 p-4 text-red-900" role="alert">{t.reasons[error]??t.error}</p>}{busy&&<p className="rounded-xl bg-slate-100 p-4 font-bold" role="status">{t.pending}</p>}
+ {challenge&&<section className="space-y-4 rounded-2xl border-2 border-teal-700 bg-teal-50 p-6 shadow-sm"><h2 className="text-2xl font-extrabold text-teal-950">{t.code}</h2>
+ <p className="rounded-xl bg-white py-4 text-center font-mono text-5xl font-extrabold tracking-wider text-teal-950 shadow-sm sm:text-6xl">{challenge.code}</p><p className="break-all text-base text-slate-700">{t.challengeId}: <code>{challenge.id}</code></p>
  <button className={buttonClass} onClick={async()=>{try{await navigator.clipboard.writeText(`${challenge.id}\n${challenge.code}`);setCopied(true);}catch{setError("SERVICE_UNAVAILABLE");}}}>{copied?t.copied:t.copy}</button>
  <p role="timer">{remaining>0?`${t.expires}: ${remaining} ${commonMessages[locale].seconds}`:t.expired}</p>
  <label className="block">{t.token}<textarea value={token} onChange={e=>setToken(e.target.value)} maxLength={4096} rows={5} className={fieldClass}/></label>
  <QrScanner onScan={setToken}/><button className={buttonClass} disabled={busy||!token.trim()||remaining===0} onClick={verify}>{t.check}</button></section>}
- {!embedded&&verdict&&<section role="status" className={`space-y-3 rounded-xl border-4 p-6 ${verdict.result==="VERIFIED_AUTHORIZED"?"border-teal-800 bg-teal-50":verdict.result==="IDENTITY_VERIFIED_NOT_AUTHORIZED"?"border-amber-800 bg-amber-50":"border-red-800 bg-red-50"}`}>
- <h2 className="text-4xl font-extrabold">{t.results[verdict.result]}</h2><p>{t.reasons[verdict.reason]??t.error}</p>
+ {!embedded&&verdict&&<section role="status" className={`space-y-4 rounded-2xl border-4 p-7 shadow-[0_18px_42px_rgba(26,64,83,.12)] ${verdict.result==="VERIFIED_AUTHORIZED"?"border-teal-700 bg-teal-50":verdict.result==="IDENTITY_VERIFIED_NOT_AUTHORIZED"?"border-amber-600 bg-amber-50":"border-red-700 bg-red-50"}`}>
+ <h2 className="text-4xl font-extrabold">{t.results[verdict.result]}</h2><p className="text-xl font-bold">{t.reasons[verdict.reason]??t.error}</p>
  {verdict.officer&&<p>{verdict.officer.name} · {verdict.officer.title} · {verdict.officer.institution}</p>}<p className="font-bold">{t.warning}</p><button className={buttonClass} onClick={()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(verdict.receipt,null,2)],{type:"application/json"}));const link=document.createElement("a");link.href=url;link.download="satyacall-verdict-"+verdict.eventId+".json";link.click();URL.revokeObjectURL(url);}}>{a.receipt}</button>{verdict.receipt.facts.officerId&&<form onSubmit={async e=>{e.preventDefault();const reason=new FormData(e.currentTarget).get("reason");setBusy(true);try{const r=await fetch("/api/officer-reports",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventId:verdict.eventId,receipt:verdict.receipt,reason})});const d=await r.json();if(!r.ok)throw new Error(d.error?.code);setReported(true);}catch(e){setError(e instanceof Error?e.message:"SERVICE_UNAVAILABLE");}finally{setBusy(false);}}}><p>{a.reportLogin}</p><label>{a.reportReason}<textarea name="reason" required maxLength={1000} className={fieldClass}/></label><button className={buttonClass} disabled={busy||reported}>{reported?a.reported:a.report}</button></form>}</section>}
  </Container>;
 }
-
-
