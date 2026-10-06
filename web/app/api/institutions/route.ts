@@ -6,7 +6,7 @@ import { institutionInput } from "../../../lib/onboarding-schema";
 import { verifyApplication } from "../../../lib/crypto";
 import { ApiError, body, dbError, failure, json } from "../../../lib/api";
 
-export async function GET(request?:Request) {
+export async function GET(request:Request) {
   try {emptyQuery(request);
     const { id, role, client } = await requireRole(allRoles);
     // RLS restricts base rows to the owner/root; no private applicant data in public view.
@@ -30,4 +30,3 @@ export async function POST(request: Request) {
     return json({ institution: result.data }, 201);
   } catch (error) { return failure(error); }
 }
-

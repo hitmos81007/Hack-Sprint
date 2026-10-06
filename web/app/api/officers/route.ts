@@ -6,7 +6,7 @@ import { officerInput } from "../../../lib/onboarding-schema";
 import { verifyApplication } from "../../../lib/crypto";
 import { ApiError, body, dbError, failure, json } from "../../../lib/api";
 import { isActive } from "../../../lib/chain";
-export async function GET(request?:Request) {
+export async function GET(request:Request) {
   try {emptyQuery(request);
     const { id, role, client } = await requireRole(allRoles);
     const query = client.from("officers").select("*").order("name");
@@ -32,4 +32,3 @@ export async function POST(request: Request) {
     return json({ officer: result.data }, 201);
   } catch (error) { return failure(error); }
 }
-

@@ -123,14 +123,14 @@ describe("onboarding routes across three accounts with actual RLS and atomic fun
     const data = await response.json(); institutionId = data.institution.id;
     expect(data.institution.status).toBe("pending"); expect(data.institution).not.toHaveProperty("privateKey");
     expect((await applyInstitution(request(payload))).status).toBe(409);
-    expect((await (await institutions()).json()).institutions).toHaveLength(1);
-    account = stranger; expect((await (await institutions()).json()).institutions).toHaveLength(0);
+    expect((await (await institutions(new Request("http://localhost/api/institutions"))).json()).institutions).toHaveLength(1);
+    account = stranger; expect((await (await institutions(new Request("http://localhost/api/institutions"))).json()).institutions).toHaveLength(0);
   });
   it("allows only root approval and atomically promotes the applicant", async () => {
     account = issuer; expect((await rootAction(request({ action: "approve" }), context(institutionId))).status).toBe(403);
     expect(chain.registerIssuer).not.toHaveBeenCalled();
     account = root;
-    expect((await (await institutions()).json()).institutions[0].status).toBe("pending");
+    expect((await (await institutions(new Request("http://localhost/api/institutions"))).json()).institutions[0].status).toBe("pending");
     const response = await rootAction(request({ action: "approve" }), context(institutionId)); expect(response.status).toBe(200);
     expect((await response.json()).institution.onchain_tx).toMatch(/^0x[0-9a-f]{64}$/);
     expect((await db.query<{ role: string }>("select role from public.profiles where id=$1", [issuer])).rows[0].role).toBe("issuer_admin");
@@ -141,7 +141,7 @@ describe("onboarding routes across three accounts with actual RLS and atomic fun
     const signature = await officerWallet.signMessage(applicationMessage("officer", officer, officerWallet.address, institutionId));
     const response = await applyOfficer(request({ institutionId, name: "Synthetic Officer", roleTitle: "Demo Inspector", walletAddress: officerWallet.address, signature }));
     expect(response.status).toBe(201); officerId = (await response.json()).officer.id;
-    expect((await (await officers()).json()).officers[0].credential).toBeNull();
+    expect((await (await officers(new Request("http://localhost/api/officers"))).json()).officers[0].credential).toBeNull();
     expect((await sql("authenticated", issuer, "update public.officers set status='active'")).error?.code).toBe("42501");
     expect((await sql("authenticated", officer, "update public.profiles set role='officer'")).error?.code).toBe("42501");
     expect((await sql("authenticated", issuer, "select public.issue_officer_credential($1,$2,$3)", [officerId, "{}", issuer])).error?.code).toBe("42501");
@@ -160,15 +160,15 @@ describe("onboarding routes across three accounts with actual RLS and atomic fun
     live.add(institutionWallet.address);
     const response = await officerAction(request({ action: "issue", credential }), context(officerId)); expect(response.status).toBe(200);
     expect((await db.query<{ role: string }>("select role from public.profiles where id=$1", [officer])).rows[0].role).toBe("officer");
-    account = officer; expect((await (await officers()).json()).officers[0].credential).toEqual(credential);
-    account = stranger; expect((await (await officers()).json()).officers).toHaveLength(0);
+    account = officer; expect((await (await officers(new Request("http://localhost/api/officers"))).json()).officers[0].credential).toEqual(credential);
+    account = stranger; expect((await (await officers(new Request("http://localhost/api/officers"))).json()).officers).toHaveLength(0);
   });
   it("revokes credentials and institutions without exposing other accounts' credentials", async () => {
     account = issuer; const response = await officerAction(request({ action: "revoke" }), context(officerId)); expect(response.status).toBe(200);
-    account = officer; expect((await (await officers()).json()).officers[0].status).toBe("revoked");
+    account = officer; expect((await (await officers(new Request("http://localhost/api/officers"))).json()).officers[0].status).toBe("revoked");
     account = root; expect((await rootAction(request({ action: "revoke" }), context(institutionId))).status).toBe(200);
     expect(await chain.isActive(institutionWallet.address)).toBe(false);
-    expect((await (await institutions()).json()).institutions[0].status).toBe("revoked");
+    expect((await (await institutions(new Request("http://localhost/api/institutions"))).json()).institutions[0].status).toBe("revoked");
   });
   it("reconciles uncertain chain writes without sending another transaction", async () => {
     account = stranger; const wallet = Wallet.createRandom();

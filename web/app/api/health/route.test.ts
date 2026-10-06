@@ -11,7 +11,7 @@ it("serves the exact public liveness contract without credentials or caching", a
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "synthetic-private-secret");
   const request = vi.fn();
   vi.stubGlobal("fetch", request);
-  const response = await GET();
+ const response = await GET(new Request("http://localhost/api/health"));
   expect(response.status).toBe(200);
   expect(response.headers.get("cache-control")).toBe("no-store");
   expect(await response.json()).toEqual({ ok: true, db: false, chain: false, llm: "mock" });
